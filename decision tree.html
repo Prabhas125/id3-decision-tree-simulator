@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Tree (ID3) Visual Simulator</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+            --glass-bg: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.22);
+            --text-primary: #333;
+            --text-secondary: #666;
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --accent-blue: #667eea;
+            --accent-purple: #764ba2;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --table-head: rgba(102, 126, 234, 0.15);
+            --border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        [data-theme="dark"] {
+            --text-primary: #f8f9fa;
+            --text-secondary: #adb5bd;
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --glass-bg: rgba(0, 0, 0, 0.3);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(22, 33, 62, 0.9);
+            --table-head: rgba(102, 126, 234, 0.25);
+            --border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* ── LOADING ─────────────────────────────── */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-gradient);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity .5s ease, visibility .5s ease;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden
+        }
+
+        .loader {
+            text-align: center;
+            color: white
+        }
+
+        .loader i {
+            font-size: 4rem;
+            animation: spin 1s linear infinite
+        }
+
+        .loader h2 {
+            margin-top: 20px;
+            font-weight: 300
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        /* ── PARTICLES ───────────────────────────── */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.25);
+            border-radius: 50%;
+            animation: float 18s infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0
+            }
+
+            10% {
+                opacity: 1
+            }
+
+            90% {
+                opacity: 1
+            }
+
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0
+            }
+        }
+
+        /* ── NAVBAR ──────────────────────────────── */
+        .navbar {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 14px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.4rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 9px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all .3s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent
+        }
+
+        /* ── HERO ────────────────────────────────── */
+        .hero-section {
+            min-height: 56vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+
+        .hero-title {
+            font-size: clamp(2rem, 5vw, 3.6rem);
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp .9s ease;
+        }
+
+        .hero-subtitle {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            margin: 16px 0 36px;
+            animation: fadeInUp .9s ease .15s backwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(28px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        /* ── GLASS CARD ──────────────────────────── */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 26px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .09);
+            transition: transform .3s, box-shadow .3s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 44px rgba(0, 0, 0, .13)
+        }
+
+        /* ── GRADIENT BUTTON ─────────────────────── */
+        .btn-gradient {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all .3s;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, .4);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(102, 126, 234, .55);
+            color: white
+        }
+
+        .btn-gradient:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            transform: none
+        }
+
+        .btn-outline-grad {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 10px 22px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all .3s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .btn-outline-grad:hover {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent
+        }
+
+        .btn-outline-grad:disabled {
+            opacity: .45;
+            cursor: not-allowed
+        }
+
+        /* ── STEP CONTROL BAR ────────────────────── */
+        .control-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 24px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            margin-bottom: 18px;
+        }
+
+        .speed-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: .9rem;
+            color: var(--text-secondary)
+        }
+
+        .speed-wrap input {
+            width: 120px
+        }
+
+        /* ── PROGRESS BAR ────────────────────────── */
+        .prog-wrap {
+            height: 8px;
+            background: var(--glass-border);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 14px
+        }
+
+        .prog-bar {
+            height: 100%;
+            background: var(--primary-gradient);
+            transition: width .4s ease;
+            border-radius: 999px
+        }
+
+        /* ── STATUS BOX ──────────────────────────── */
+        .status-box {
+            margin-top: 14px;
+            padding: 14px 18px;
+            border-left: 5px solid;
+            border-image: var(--primary-gradient) 1;
+            background: rgba(102, 126, 234, .08);
+            border-radius: 0 10px 10px 0;
+            font-weight: 600;
+            font-size: .97rem;
+            animation: fadeSlide .35s ease;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-12px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        /* ── STEP BADGE ──────────────────────────── */
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: white;
+            font-weight: 700;
+            font-size: .85rem;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        /* ── DATA TABLE ──────────────────────────── */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0
+        }
+
+        .data-table th {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 12px 10px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .data-table th:first-child {
+            border-radius: 10px 0 0 0
+        }
+
+        .data-table th:last-child {
+            border-radius: 0 10px 0 0
+        }
+
+        .data-table td {
+            padding: 10px 9px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--glass-bg);
+            transition: background .2s;
+        }
+
+        .data-table td:first-child {
+            text-align: left;
+            font-weight: 600
+        }
+
+        .data-table tr.row-focus td {
+            background: rgba(102, 126, 234, .22) !important;
+            font-weight: 600
+        }
+
+        .data-table tr.row-dim td {
+            opacity: .28
+        }
+
+        .data-table tr.row-focus td {
+            outline: 2px solid #667eea;
+            outline-offset: -2px
+        }
+
+        .td-yes {
+            background: rgba(40, 167, 69, .18) !important;
+            color: #176a3b;
+            font-weight: 700
+        }
+
+        .td-no {
+            background: rgba(220, 53, 69, .18) !important;
+            color: #9c2d25;
+            font-weight: 700
+        }
+
+        .th-target {
+            background: rgba(40, 167, 69, .35) !important;
+            color: #176a3b
+        }
+
+        /* ── CALC PANEL ──────────────────────────── */
+        .calc-panel {
+            min-height: 220px
+        }
+
+        .formula-box {
+            font-family: 'Courier New', monospace;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 14px 16px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            overflow: auto;
+            font-size: .87rem;
+            line-height: 1.7;
+            margin: 10px 0;
+        }
+
+        .formula-box b {
+            color: #93c5fd
+        }
+
+        .metric-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 12px 0
+        }
+
+        .metric-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 110px;
+            text-align: center;
+        }
+
+        .metric-card .m-label {
+            font-size: .8rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px
+        }
+
+        .metric-card .m-val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text
+        }
+
+        .ig-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0
+        }
+
+        .ig-table th {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: .9rem
+        }
+
+        .ig-table td {
+            padding: 9px 12px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            font-size: .9rem
+        }
+
+        .ig-table tr.best-row td {
+            background: rgba(40, 167, 69, .18);
+            font-weight: 700
+        }
+
+        .ig-table tr.best-row td:first-child::after {
+            content: " ★";
+            color: #28a745
+        }
+
+        .badge-yes {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: .82rem;
+            font-weight: 700;
+            background: rgba(40, 167, 69, .18);
+            color: #176a3b;
+            border: 1px solid #28a74560;
+        }
+
+        .badge-no {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: .82rem;
+            font-weight: 700;
+            background: rgba(220, 53, 69, .18);
+            color: #9c2d25;
+            border: 1px solid #dc354560;
+        }
+
+        .entropy-detail {
+            background: rgba(102, 126, 234, .07);
+            border: 1px solid rgba(102, 126, 234, .2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: .9rem;
+        }
+
+        .highlight-attr {
+            background: rgba(255, 193, 7, .25);
+            box-shadow: inset 0 0 0 2px #ffc107;
+            border-radius: 6px;
+        }
+
+        /* ── TREE AREA ───────────────────────────── */
+        .tree-canvas {
+            overflow: auto;
+            min-height: 320px;
+            padding: 20px;
+            background: var(--glass-bg);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .tree-root {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-width: 700px
+        }
+
+        .t-level {
+            display: flex;
+            flex-direction: column;
+            align-items: center
+        }
+
+        .t-node {
+            padding: 12px 18px;
+            border-radius: 14px;
+            color: white;
+            font-weight: 700;
+            text-align: center;
+            min-width: 110px;
+            font-size: .95rem;
+            box-shadow: 0 5px 18px rgba(0, 0, 0, .18);
+            animation: nodeAppear .45s ease;
+            position: relative;
+        }
+
+        @keyframes nodeAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(.92)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .t-internal {
+            background: var(--primary-gradient)
+        }
+
+        .t-leaf-yes {
+            background: var(--success-gradient)
+        }
+
+        .t-leaf-no {
+            background: var(--danger-gradient)
+        }
+
+        .t-placeholder {
+            background: rgba(102, 126, 234, .25);
+            color: var(--text-secondary);
+            border: 2px dashed #667eea;
+            font-style: italic
+        }
+
+        .branch-row {
+            display: flex;
+            gap: 24px;
+            margin-top: 24px;
+            align-items: flex-start;
+            flex-wrap: nowrap
+        }
+
+        .t-branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px
+        }
+
+        .branch-lbl {
+            font-size: .8rem;
+            font-weight: 700;
+            color: white;
+            background: rgba(102, 126, 234, .7);
+            padding: 3px 10px;
+            border-radius: 999px;
+        }
+
+        .connector-line {
+            width: 2px;
+            height: 22px;
+            background: rgba(102, 126, 234, .5);
+            margin: 0 auto
+        }
+
+        .subtree-row {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            margin-top: 0
+        }
+
+        .t-node .node-detail {
+            font-size: .72rem;
+            font-weight: 400;
+            margin-top: 4px;
+            opacity: .9
+        }
+
+        /* ── THEORY TABS ─────────────────────────── */
+        .theory-tab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px
+        }
+
+        .theory-tab-btn {
+            padding: 9px 20px;
+            border-radius: 22px;
+            border: 2px solid var(--border-color);
+            background: transparent;
+            cursor: pointer;
+            font-size: .9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all .25s;
+        }
+
+        .theory-tab-btn.active,
+        .theory-tab-btn:hover {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .theory-tab-pane {
+            display: none
+        }
+
+        .theory-tab-pane.active {
+            display: block;
+            animation: fadeInUp .35s ease
+        }
+
+        /* ── PREDICTION ──────────────────────────── */
+        .pred-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px
+        }
+
+        @media(max-width:500px) {
+            .pred-grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .pred-select {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--text-primary);
+            width: 100%;
+            font-size: .95rem;
+        }
+
+        .pred-result {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 14px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+        }
+
+        .pred-path {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+            align-items: center
+        }
+
+        .pred-step {
+            background: rgba(102, 126, 234, .12);
+            border: 1px solid rgba(102, 126, 234, .3);
+            border-radius: 22px;
+            padding: 5px 14px;
+            font-size: .88rem;
+            font-weight: 600;
+        }
+
+        .pred-arrow {
+            color: #667eea;
+            font-weight: 700
+        }
+
+        /* ── TIMELINE STEPS ──────────────────────── */
+        .timeline {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            position: relative
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color)
+        }
+
+        .tl-item {
+            position: relative;
+            padding: 12px 12px 12px 52px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: background .2s;
+        }
+
+        .tl-item:hover {
+            background: rgba(102, 126, 234, .06)
+        }
+
+        .tl-dot {
+            position: absolute;
+            left: 10px;
+            top: 16px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .7rem;
+            font-weight: 700;
+        }
+
+        .tl-title {
+            font-weight: 600;
+            font-size: .95rem
+        }
+
+        .tl-body {
+            color: var(--text-secondary);
+            font-size: .87rem;
+            margin-top: 4px
+        }
+
+        /* ── RESPONSIVE ──────────────────────────── */
+        @media(max-width:768px) {
+            .branch-row {
+                flex-direction: column;
+                align-items: center
+            }
+
+            .tree-root {
+                min-width: 300px
+            }
+        }
+
+        /* ── QUIZ ────────────────────────────────── */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            background: transparent;
+            cursor: pointer;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            transition: all .25s;
+            font-weight: 500;
+        }
+
+        .quiz-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, .08)
+        }
+
+        .quiz-option.correct {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, .14);
+            color: #176a3b;
+            font-weight: 700
+        }
+
+        .quiz-option.wrong {
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, .12);
+            color: #9c2d25
+        }
+
+        /* ── NOTIFICATION ────────────────────────── */
+        .notif {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 5000;
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 600;
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 8px 28px rgba(102, 126, 234, .5);
+            animation: slideIn .4s ease;
+            max-width: 320px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(120%)
+            }
+
+            to {
+                transform: none
+            }
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        details>summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #667eea;
+            padding: 6px 0
+        }
+
+        details[open]>summary {
+            margin-bottom: 10px
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading -->
+    <div id="loading-screen">
+        <div class="loader">
+            <i class="fas fa-tree"></i>
+            <h2>Decision Tree Simulator</h2>
+            <p style="margin-top:10px;opacity:.8">Loading ID3 engine…</p>
+        </div>
+    </div>
+
+    <!-- Particles -->
+    <div id="particles"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container-fluid px-4 d-flex align-items-center justify-content-between">
+            <span class="navbar-brand"><i class="fas fa-tree me-2"></i>Decision Tree (ID3)</span>
+            <div class="d-flex align-items-center gap-2">
+                <span id="step-counter" class="badge rounded-pill"
+                    style="background:var(--primary-gradient);font-size:.85rem;padding:6px 14px">Step 0 / 0</span>
+                <button class="theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon"
+                        id="theme-icon"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main -->
+    <div class="container-fluid px-3 px-md-4" style="position:relative;z-index:1;max-width:1600px;margin:auto">
+
+        <!-- HERO -->
+        <div class="hero-section">
+            <div>
+                <div class="hero-title"><i class="fas fa-sitemap me-3"></i>ID3 Decision Tree Simulator</div>
+                <p class="hero-subtitle">Watch entropy & information gain build the <strong>Play Tennis</strong>
+                    decision tree — step by step, with every formula expanded.</p>
+                <button class="btn-gradient" onclick="startSim()"><i class="fas fa-play"></i> Start Simulation</button>
+                <button class="btn-outline-grad ms-2" onclick="scrollTo('#theory')"><i class="fas fa-book"></i> Theory
+                    Guide</button>
+            </div>
+        </div>
+
+        <!-- ══ SIMULATION SECTION ══════════════════════════════════════════════ -->
+        <div id="sim-section" style="display:none">
+
+            <!-- Control Bar -->
+            <div class="glass-card">
+                <div class="section-title"><i class="fas fa-sliders-h me-2"></i>Simulation Controls</div>
+                <div class="control-bar">
+                    <button class="btn-gradient" onclick="reset()"><i class="fas fa-redo"></i> Reset</button>
+                    <button class="btn-outline-grad" id="btn-prev" onclick="prevStep()" disabled><i
+                            class="fas fa-step-backward"></i> Prev</button>
+                    <button class="btn-gradient" id="btn-next" onclick="nextStep()"><i class="fas fa-step-forward"></i>
+                        Next</button>
+                    <button class="btn-outline-grad" id="btn-auto" onclick="toggleAuto()"><i
+                            class="fas fa-play-circle"></i> Auto-play</button>
+                    <div class="speed-wrap">
+                        <i class="fas fa-tachometer-alt"></i> Speed
+                        <input type="range" id="speed" min="300" max="2500" step="100" value="1200">
+                        <span id="speed-label">1.2s</span>
+                    </div>
+                    <button class="btn-outline-grad ms-auto" onclick="scrollTo('#predict-section')"><i
+                            class="fas fa-magic"></i> Predict</button>
+                </div>
+                <div id="status" class="status-box"><i class="fas fa-info-circle me-2"></i>Press <strong>Next</strong>
+                    or <strong>Auto-play</strong> to begin.</div>
+                <div class="prog-wrap">
+                    <div class="prog-bar" id="prog" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- Dataset + Calc + Tree -->
+            <div class="row g-3">
+                <!-- Dataset -->
+                <div class="col-12">
+                    <div class="glass-card">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="section-title"><i class="fas fa-table me-2"></i>Play Tennis Dataset</div>
+                            <span class="badge rounded-pill"
+                                style="background:var(--primary-gradient);font-size:.8rem">14 Instances · 4
+                                Features</span>
+                        </div>
+                        <div style="overflow-x:auto">
+                            <table class="data-table" id="dataset"></table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calc Panel -->
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="section-title"><i class="fas fa-calculator me-2"></i>Calculation Panel</div>
+                        <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:14px">Every entropy,
+                            weighted-entropy, and information-gain result is shown with actual counts substituted into
+                            the formula.</p>
+                        <div id="calc" class="calc-panel"></div>
+                    </div>
+                </div>
+
+                <!-- Tree Panel -->
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="section-title"><i class="fas fa-project-diagram me-2"></i>Growing Decision Tree
+                        </div>
+                        <div id="tree" class="tree-canvas"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction -->
+            <div class="glass-card" id="predict-section">
+                <div class="section-title"><i class="fas fa-magic me-2"></i>Prediction Demo</div>
+                <p style="font-size:.88rem;color:var(--text-secondary)">Select feature values below and predict whether
+                    to play tennis using the built tree.</p>
+                <div class="pred-grid">
+                    <label>
+                        <div style="font-weight:600;margin-bottom:6px"><i class="fas fa-cloud-sun me-1"></i>Outlook
+                        </div>
+                        <select class="pred-select" id="pOutlook">
+                            <option>sunny</option>
+                            <option>overcast</option>
+                            <option>rain</option>
+                        </select>
+                    </label>
+                    <label>
+                        <div style="font-weight:600;margin-bottom:6px"><i
+                                class="fas fa-thermometer-half me-1"></i>Temperature</div>
+                        <select class="pred-select" id="pTemp">
+                            <option>hot</option>
+                            <option selected>mild</option>
+                            <option>cool</option>
+                        </select>
+                    </label>
+                    <label>
+                        <div style="font-weight:600;margin-bottom:6px"><i class="fas fa-tint me-1"></i>Humidity</div>
+                        <select class="pred-select" id="pHumidity">
+                            <option selected>high</option>
+                            <option>normal</option>
+                        </select>
+                    </label>
+                    <label>
+                        <div style="font-weight:600;margin-bottom:6px"><i class="fas fa-wind me-1"></i>Wind</div>
+                        <select class="pred-select" id="pWind">
+                            <option>weak</option>
+                            <option selected>strong</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="btn-gradient mt-3" onclick="predict()"><i class="fas fa-search"></i> Predict Now</button>
+                <div id="pred-result" class="pred-result mt-3">
+                    <i class="fas fa-info-circle me-2" style="color:#667eea"></i>Complete the simulation (or just click
+                    Predict) to see the tree prediction.
+                </div>
+            </div>
+
+        </div><!-- /sim-section -->
+
+        <!-- ══ THEORY SECTION ══════════════════════════════════════════════════ -->
+        <div id="theory" class="glass-card" style="margin-top:10px">
+            <div class="section-title"><i class="fas fa-book-open me-2"></i>Theory & Working of ID3 / Decision Trees
+            </div>
+
+            <div class="theory-tab-nav">
+                <button class="theory-tab-btn active" onclick="showTheory('overview')">Overview</button>
+                <button class="theory-tab-btn" onclick="showTheory('entropy')">Entropy</button>
+                <button class="theory-tab-btn" onclick="showTheory('ig')">Information Gain</button>
+                <button class="theory-tab-btn" onclick="showTheory('id3')">ID3 Algorithm</button>
+                <button class="theory-tab-btn" onclick="showTheory('steps')">Step-by-Step</button>
+                <button class="theory-tab-btn" onclick="showTheory('pros')">Pros & Cons</button>
+                <button class="theory-tab-btn" onclick="showTheory('quiz')">Mini Quiz</button>
+            </div>
+
+            <!-- Overview -->
+            <div class="theory-tab-pane active" id="t-overview">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h5 style="font-weight:700">What is a Decision Tree?</h5>
+                        <p style="color:var(--text-secondary);line-height:1.8">A <strong>Decision Tree</strong> is a
+                            supervised machine-learning model that predicts a target by learning simple decision rules
+                            from features. Each internal node tests a feature, each branch represents an outcome of that
+                            test, and each leaf gives a prediction.</p>
+                        <p style="color:var(--text-secondary);line-height:1.8">ID3 (<em>Iterative Dichotomiser 3</em>)
+                            by Ross Quinlan (1986) builds the tree <strong>top-down</strong>, greedily choosing at each
+                            node the feature that maximises <strong>Information Gain</strong>.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="background:var(--glass-bg);border-radius:14px;padding:18px">
+                            <strong>Key Terminology</strong>
+                            <ul style="margin-top:10px;color:var(--text-secondary);line-height:2">
+                                <li><strong>Root node</strong> – top-most node; best splitting feature</li>
+                                <li><strong>Internal node</strong> – a feature being tested</li>
+                                <li><strong>Branch</strong> – outcome of a feature test</li>
+                                <li><strong>Leaf node</strong> – terminal node carrying a class label</li>
+                                <li><strong>Pure node</strong> – all examples have the same class (entropy = 0)</li>
+                                <li><strong>Impure node</strong> – mixed classes; needs further splitting</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Entropy -->
+            <div class="theory-tab-pane" id="t-entropy">
+                <h5 style="font-weight:700">Shannon Entropy — Measuring Impurity</h5>
+                <p style="color:var(--text-secondary);line-height:1.8">Entropy quantifies the <em>uncertainty</em> or
+                    <em>impurity</em> in a set of examples. It comes from information theory (Claude Shannon, 1948).</p>
+                <div class="formula-box"><b>H(S) = −∑ p_i · log₂(p_i)</b>
+
+                    For binary classification (Yes / No):
+                    H(S) = −(p_yes · log₂ p_yes) − (p_no · log₂ p_no)
+
+                    Where:
+                    S = current dataset or subset
+                    p_yes = proportion of positive examples (yes / total)
+                    p_no = proportion of negative examples (no / total)
+                    log₂ = logarithm base 2 (result in bits)</div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <div class="metric-card" style="border:1px solid rgba(40,167,69,.4)">
+                            <div class="m-label">H = 0 (Pure)</div>
+                            <div class="m-val">0.000</div>
+                            <div style="font-size:.8rem;color:var(--text-secondary);margin-top:4px">All examples same
+                                class — perfect split</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card" style="border:1px solid rgba(255,193,7,.4)">
+                            <div class="m-label">H = 0.971 (Mixed)</div>
+                            <div class="m-val">0.971</div>
+                            <div style="font-size:.8rem;color:var(--text-secondary);margin-top:4px">2 yes, 3 no (or 3
+                                yes, 2 no) — noisy</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card" style="border:1px solid rgba(220,53,69,.4)">
+                            <div class="m-label">H = 1.0 (Maximum)</div>
+                            <div class="m-val">1.000</div>
+                            <div style="font-size:.8rem;color:var(--text-secondary);margin-top:4px">Equal split (50 /
+                                50) — maximum uncertainty</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="entropy-detail mt-3">
+                    <strong>Worked Example — Root Entropy (9 Yes, 5 No, Total 14):</strong><br>
+                    <code>H(S) = −(9/14)·log₂(9/14) − (5/14)·log₂(5/14)</code><br>
+                    <code>&nbsp;&nbsp;&nbsp;&nbsp; = −(0.643)·(−0.637) − (0.357)·(−1.485)</code><br>
+                    <code>&nbsp;&nbsp;&nbsp;&nbsp; = 0.410 + 0.530 = <strong>0.940</strong></code>
+                </div>
+            </div>
+
+            <!-- Information Gain -->
+            <div class="theory-tab-pane" id="t-ig">
+                <h5 style="font-weight:700">Information Gain — Choosing the Best Split</h5>
+                <p style="color:var(--text-secondary);line-height:1.8">Information Gain measures how much an attribute
+                    <em>reduces entropy</em> in the dataset. The attribute with the highest IG is chosen as the
+                    splitting criterion.</p>
+                <div class="formula-box"><b>IG(S, A) = H(S) − H(S | A)</b>
+
+                    Where the weighted (conditional) entropy is:
+
+                    H(S | A) = ∑ (|S_v| / |S|) · H(S_v)
+                    v∈values(A)
+
+                    S_v = subset of S where attribute A = v
+                    |S_v| = number of examples where A = v
+                    |S| = total examples in current set</div>
+                <div class="entropy-detail">
+                    <strong>Worked Example — IG for Outlook (root level):</strong><br><br>
+                    <strong>Subsets:</strong><br>
+                    &nbsp;Sunny: 5 rows (2 yes, 3 no) → H = 0.971<br>
+                    &nbsp;Overcast: 4 rows (4 yes, 0 no) → H = 0.000 &nbsp;← pure!<br>
+                    &nbsp;Rain: 5 rows (3 yes, 2 no) → H = 0.971<br><br>
+                    <strong>Weighted Entropy:</strong><br>
+                    &nbsp;H(S|Outlook) = (5/14)·0.971 + (4/14)·0.000 + (5/14)·0.971<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 0.347 + 0 + 0.347 =
+                    0.693<br><br>
+                    <strong>Information Gain:</strong><br>
+                    &nbsp;IG(S, Outlook) = 0.940 − 0.693 = <strong>0.246</strong>
+                </div>
+                <div class="ig-table mt-3">
+                    <table class="ig-table">
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Weighted Entropy</th>
+                                <th>Information Gain</th>
+                                <th>Rank</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="best-row">
+                                <td><strong>Outlook</strong></td>
+                                <td>0.693</td>
+                                <td><strong>0.246</strong></td>
+                                <td>1st ✓</td>
+                            </tr>
+                            <tr>
+                                <td>Temperature</td>
+                                <td>0.911</td>
+                                <td>0.029</td>
+                                <td>4th</td>
+                            </tr>
+                            <tr>
+                                <td>Humidity</td>
+                                <td>0.788</td>
+                                <td>0.152</td>
+                                <td>2nd</td>
+                            </tr>
+                            <tr>
+                                <td>Wind</td>
+                                <td>0.892</td>
+                                <td>0.048</td>
+                                <td>3rd</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ID3 Algorithm -->
+            <div class="theory-tab-pane" id="t-id3">
+                <h5 style="font-weight:700">ID3 Algorithm — Pseudocode</h5>
+                <div class="formula-box"><b>function ID3(S, Features, Target):</b>
+
+                    // Base cases
+                    if all examples in S have the same Target class:
+                    return LeafNode(class)
+
+                    if Features is empty:
+                    return LeafNode(majority_class(S))
+
+                    // Recursive case
+                    A ← argmax_{f ∈ Features} IG(S, f) // best feature
+                    T ← new internal node labelled A
+
+                    for each value v of A:
+                    S_v ← { x ∈ S | x.A = v }
+                    if S_v is empty:
+                    add leaf with majority_class(S) to T
+                    else:
+                    add branch ID3(S_v, Features − {A}, Target) to T
+
+                    return T</div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <div
+                            style="background:rgba(40,167,69,.1);border:1px solid rgba(40,167,69,.3);border-radius:12px;padding:16px">
+                            <strong style="color:#176a3b">Stopping Conditions</strong>
+                            <ul style="color:var(--text-secondary);margin-top:8px;line-height:2">
+                                <li>All examples → same class (leaf)</li>
+                                <li>No more features to split on (leaf with majority class)</li>
+                                <li>Subset is empty (leaf with parent majority)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div
+                            style="background:rgba(102,126,234,.08);border:1px solid rgba(102,126,234,.25);border-radius:12px;padding:16px">
+                            <strong>Complexity</strong>
+                            <ul style="color:var(--text-secondary);margin-top:8px;line-height:2">
+                                <li>Time: O(|S| · |F| · depth)</li>
+                                <li>Space: O(|F| · depth)</li>
+                                <li>Greedy — no backtracking</li>
+                                <li>Finds locally optimal split at each step</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step-by-Step -->
+            <div class="theory-tab-pane" id="t-steps">
+                <h5 style="font-weight:700">How This Simulation Works — Step by Step</h5>
+                <ul class="timeline">
+                    <li class="tl-item">
+                        <div class="tl-dot">1</div>
+                        <div class="tl-title">Load Dataset</div>
+                        <div class="tl-body">14 instances of the classic Play Tennis dataset with 4 features: Outlook,
+                            Temperature, Humidity, Wind.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">2</div>
+                        <div class="tl-title">Compute Root Entropy</div>
+                        <div class="tl-body">Count Yes (9) and No (5) classes. Apply the entropy formula H(S) =
+                            −(9/14)log₂(9/14) − (5/14)log₂(5/14) = 0.940.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">3</div>
+                        <div class="tl-title">Calculate Information Gain for All Features</div>
+                        <div class="tl-body">For each of the 4 features, split the dataset, compute branch entropies,
+                            compute weighted entropy, subtract from root entropy.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">4</div>
+                        <div class="tl-title">Select Root Node</div>
+                        <div class="tl-body">Outlook has IG = 0.246 — the highest. It becomes the root. The tree starts
+                            growing.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">5</div>
+                        <div class="tl-title">Overcast Branch → Leaf (Yes)</div>
+                        <div class="tl-body">All 4 Overcast examples play tennis. Entropy = 0 → pure leaf node labelled
+                            "Yes".</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">6</div>
+                        <div class="tl-title">Sunny Branch → Test Humidity</div>
+                        <div class="tl-body">5 Sunny examples (2 Yes, 3 No) are mixed. Re-run IG on remaining features.
+                            Humidity wins. Split: High → No, Normal → Yes.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">7</div>
+                        <div class="tl-title">Rain Branch → Test Wind</div>
+                        <div class="tl-body">5 Rain examples (3 Yes, 2 No) are mixed. Wind wins IG among remaining
+                            features. Split: Weak → Yes, Strong → No.</div>
+                    </li>
+                    <li class="tl-item">
+                        <div class="tl-dot">8</div>
+                        <div class="tl-title">Tree Complete</div>
+                        <div class="tl-body">All branches are pure. The tree has 1 root, 2 internal nodes, 5 leaf nodes.
+                            Depth = 2.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Pros & Cons -->
+            <div class="theory-tab-pane" id="t-pros">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div
+                            style="background:rgba(40,167,69,.1);border:1px solid rgba(40,167,69,.3);border-radius:14px;padding:20px">
+                            <h6 style="font-weight:700;color:#176a3b"><i class="fas fa-check-circle me-2"></i>Advantages
+                            </h6>
+                            <ul style="color:var(--text-secondary);line-height:2.1;margin-top:8px">
+                                <li>Highly <strong>interpretable</strong> — easy to visualise and explain</li>
+                                <li>Handles both categorical and numerical data</li>
+                                <li>No normalisation or scaling required</li>
+                                <li>Can handle missing values (with modifications)</li>
+                                <li>Non-linear boundaries possible</li>
+                                <li>Fast inference — O(depth) per prediction</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div
+                            style="background:rgba(220,53,69,.08);border:1px solid rgba(220,53,69,.25);border-radius:14px;padding:20px">
+                            <h6 style="font-weight:700;color:#9c2d25"><i
+                                    class="fas fa-times-circle me-2"></i>Disadvantages</h6>
+                            <ul style="color:var(--text-secondary);line-height:2.1;margin-top:8px">
+                                <li>Prone to <strong>overfitting</strong> on training data</li>
+                                <li>High variance — small data changes → different trees</li>
+                                <li>Biased toward features with many values</li>
+                                <li>Cannot model XOR / parity patterns efficiently</li>
+                                <li>Greedy split — may miss globally optimal tree</li>
+                                <li>Single tree less accurate than ensembles (Random Forest)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 p-3"
+                    style="background:var(--glass-bg);border-radius:12px;border:1px solid var(--glass-border)">
+                    <strong>Extensions of ID3:</strong>
+                    <div class="row g-2 mt-1" style="font-size:.88rem;color:var(--text-secondary)">
+                        <div class="col-sm-4"><strong>C4.5</strong> — handles continuous features, missing values, uses
+                            Gain Ratio</div>
+                        <div class="col-sm-4"><strong>CART</strong> — binary splits, uses Gini impurity, produces binary
+                            trees</div>
+                        <div class="col-sm-4"><strong>Random Forest</strong> — ensemble of decision trees for much
+                            higher accuracy</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz -->
+            <div class="theory-tab-pane" id="t-quiz">
+                <h5 style="font-weight:700;margin-bottom:18px">Quick Knowledge Check</h5>
+                <div id="quiz-container"></div>
+            </div>
+
+        </div><!-- /theory -->
+
+    </div><!-- /container -->
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        "use strict";
+
+        // ─────────────────────────── DATA ────────────────────────────
+        const DATA = [
+            { Day: "D1", outlook: "sunny", Temp: "hot", Humidity: "high", Wind: "weak", Play: "no" },
+            { Day: "D2", outlook: "sunny", Temp: "hot", Humidity: "high", Wind: "strong", Play: "no" },
+            { Day: "D3", outlook: "overcast", Temp: "hot", Humidity: "high", Wind: "weak", Play: "yes" },
+            { Day: "D4", outlook: "rain", Temp: "mild", Humidity: "high", Wind: "weak", Play: "yes" },
+            { Day: "D5", outlook: "rain", Temp: "cool", Humidity: "normal", Wind: "weak", Play: "yes" },
+            { Day: "D6", outlook: "rain", Temp: "cool", Humidity: "normal", Wind: "strong", Play: "no" },
+            { Day: "D7", outlook: "overcast", Temp: "cool", Humidity: "normal", Wind: "strong", Play: "yes" },
+            { Day: "D8", outlook: "sunny", Temp: "mild", Humidity: "high", Wind: "weak", Play: "no" },
+            { Day: "D9", outlook: "sunny", Temp: "cool", Humidity: "normal", Wind: "weak", Play: "yes" },
+            { Day: "D10", outlook: "rain", Temp: "mild", Humidity: "normal", Wind: "weak", Play: "yes" },
+            { Day: "D11", outlook: "sunny", Temp: "mild", Humidity: "normal", Wind: "strong", Play: "yes" },
+            { Day: "D12", outlook: "overcast", Temp: "mild", Humidity: "high", Wind: "strong", Play: "yes" },
+            { Day: "D13", outlook: "overcast", Temp: "hot", Humidity: "normal", Wind: "weak", Play: "yes" },
+            { Day: "D14", outlook: "rain", Temp: "mild", Humidity: "high", Wind: "strong", Play: "no" }
+        ];
+        const FEATURES = ["outlook", "Temp", "Humidity", "Wind"];
+        const SUNNY = DATA.filter(r => r.outlook === "sunny");
+        const OVERCAST = DATA.filter(r => r.outlook === "overcast");
+        const RAIN = DATA.filter(r => r.outlook === "rain");
+
+        // ─────────────────────────── MATH ────────────────────────────
+        function entropy(rows) {
+            if (!rows.length) return 0;
+            const yes = rows.filter(r => r.Play === "yes").length, no = rows.length - yes;
+            let h = 0;
+            [yes, no].forEach(c => { if (c) { const p = c / rows.length; h -= p * Math.log2(p); } });
+            return h;
+        }
+        function splitBy(rows, feat) {
+            const g = {};
+            rows.forEach(r => (g[r[feat]] ??= []).push(r));
+            return g;
+        }
+        function weightedEntropy(rows, feat) {
+            return Object.values(splitBy(rows, feat)).reduce((s, v) => s + v.length / rows.length * entropy(v), 0);
+        }
+        function ig(rows, feat) { return entropy(rows) - weightedEntropy(rows, feat); }
+        function fmt(x) { return Number(x).toFixed(3); }
+        function cnts(rows) { return { yes: rows.filter(r => r.Play === "yes").length, no: rows.filter(r => r.Play === "no").length }; }
+
+        // ─────────────────────────── HTML BUILDERS ────────────────────
+        function metricRow(items) {
+            return `<div class="metric-row">${items.map(([l, v]) => `
+    <div class="metric-card"><div class="m-label">${l}</div><div class="m-val">${v}</div></div>`).join("")}</div>`;
+        }
+
+        function entropyBlock(rows, title = "") {
+            const c = cnts(rows), n = rows.length;
+            if (!n) return `<div class="formula-box"><b>${title}</b>: (empty)</div>`;
+            const t = [];
+            if (c.yes) t.push(`−(${c.yes}/${n})·log₂(${c.yes}/${n})`);
+            if (c.no) t.push(`−(${c.no}/${n})·log₂(${c.no}/${n})`);
+            return `<div class="formula-box"><b>${title || "H(S)"}</b>
+H = ${t.join(" ")}
+  = <b>${fmt(entropy(rows))}</b></div>`;
+        }
+
+        function splitBlock(rows, feat) {
+            const groups = splitBy(rows, feat);
+            const parentH = entropy(rows);
+            const we = weightedEntropy(rows, feat);
+            const IG = ig(rows, feat);
+            let html = "";
+            Object.entries(groups).forEach(([val, grp]) => {
+                const c = cnts(grp);
+                html += `<div class="entropy-detail">
+      <strong>${feat} = ${val}</strong> — ${grp.length} rows: ${c.yes} yes, ${c.no} no
+      ${entropyBlock(grp, `H(${val})`)}
+    </div>`;
+            });
+            const pieces = Object.entries(groups).map(([v, g]) => `(${g.length}/${rows.length})·${fmt(entropy(g))}`).join(" + ");
+            html += `<div class="formula-box"><b>Weighted Entropy  H(S|${feat})</b>
+= ${pieces}
+= <b>${fmt(we)}</b></div>
+<div class="formula-box"><b>Information Gain  IG(S, ${feat})</b>
+= H(S) − H(S|${feat})
+= ${fmt(parentH)} − ${fmt(we)}
+= <b>${fmt(IG)}</b></div>`;
+            return html;
+        }
+
+        function igTable(rows, feats, chosen) {
+            let rows2 = "";
+            feats.forEach(f => {
+                const w = weightedEntropy(rows, f), g = ig(rows, f);
+                rows2 += `<tr class="${f === chosen ? 'best-row' : ''}">
+      <td><strong>${f}</strong></td><td>${fmt(w)}</td><td>${fmt(g)}</td>
+      <td>${f === chosen ? '<span class="badge-yes">★ Best</span>' : ''}</td></tr>`;
+            });
+            return `<table class="ig-table">
+    <thead><tr><th>Attribute</th><th>Weighted Entropy</th><th>Information Gain</th><th></th></tr></thead>
+    <tbody>${rows2}</tbody></table>`;
+        }
+
+        // ─────────────────────────── TREE HTML ───────────────────────
+        function nodeHtml(label, cls, detail = "") {
+            return `<div class="t-node ${cls}">${label}${detail ? `<div class="node-detail">${detail}</div>` : ""}</div>`;
+        }
+        function branch(lbl, inner) {
+            return `<div class="t-branch">
+    <div class="branch-lbl">${lbl}</div>
+    <div class="connector-line"></div>
+    ${inner}
+  </div>`;
+        }
+
+        function buildTree(stage) {
+            if (stage < 8) return `<div style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="fas fa-hourglass-start fa-2x mb-3 d-block" style="opacity:.4"></i>Tree will grow as ID3 makes decisions…</div>`;
+
+            // Root node always visible from stage 8
+            const rootNode = nodeHtml("Outlook", "t-internal", "root · IG=0.246");
+
+            if (stage === 8) {
+                return `<div class="tree-root"><div class="t-level">${rootNode}</div></div>`;
+            }
+
+            // Stage 9–11: overcast leaf, sunny in progress
+            const overcastLeaf = branch("overcast", nodeHtml("✓ Yes", "t-leaf-yes", "4 yes, 0 no"));
+
+            if (stage === 9 || stage === 10) {
+                return `<div class="tree-root"><div class="t-level">${rootNode}
+      <div class="branch-row">
+        ${branch("sunny", nodeHtml("?", "t-placeholder", "analyzing…"))}
+        ${overcastLeaf}
+        ${branch("rain", nodeHtml("?", "t-placeholder", "analyzing…"))}
+      </div>
+    </div></div>`;
+            }
+            if (stage === 11) {
+                return `<div class="tree-root"><div class="t-level">${rootNode}
+      <div class="branch-row">
+        ${branch("sunny", `<div class="t-level">${nodeHtml("Humidity", "t-internal", "IG=0.971")}
+          <div class="subtree-row">${branch("high", nodeHtml("?", "t-placeholder"))}${branch("normal", nodeHtml("?", "t-placeholder"))}</div>
+        </div>`)}
+        ${overcastLeaf}
+        ${branch("rain", nodeHtml("?", "t-placeholder", "analyzing…"))}
+      </div>
+    </div></div>`;
+            }
+
+            // Stage 12-14: Sunny fully resolved
+            const sunnySubtree = branch("sunny", `<div class="t-level">${nodeHtml("Humidity", "t-internal", "IG=0.971")}
+    <div class="subtree-row">
+      ${branch("high", nodeHtml("✗ No", "t-leaf-no", "3 no, 0 yes"))}
+      ${branch("normal", nodeHtml("✓ Yes", "t-leaf-yes", "2 yes, 0 no"))}
+    </div>
+  </div>`);
+
+            if (stage === 12 || stage === 13) {
+                return `<div class="tree-root"><div class="t-level">${rootNode}
+      <div class="branch-row">
+        ${sunnySubtree}
+        ${overcastLeaf}
+        ${branch("rain", nodeHtml("?", "t-placeholder", "analyzing…"))}
+      </div>
+    </div></div>`;
+            }
+            if (stage === 14) {
+                return `<div class="tree-root"><div class="t-level">${rootNode}
+      <div class="branch-row">
+        ${sunnySubtree}
+        ${overcastLeaf}
+        ${branch("rain", `<div class="t-level">${nodeHtml("Wind", "t-internal", "IG=0.971")}
+          <div class="subtree-row">${branch("weak", nodeHtml("?", "t-placeholder"))}${branch("strong", nodeHtml("?", "t-placeholder"))}</div>
+        </div>`)}
+      </div>
+    </div></div>`;
+            }
+
+            // Stage 15+: full tree
+            const rainSubtree = branch("rain", `<div class="t-level">${nodeHtml("Wind", "t-internal", "IG=0.971")}
+    <div class="subtree-row">
+      ${branch("weak", nodeHtml("✓ Yes", "t-leaf-yes", "3 yes, 0 no"))}
+      ${branch("strong", nodeHtml("✗ No", "t-leaf-no", "2 no, 0 yes"))}
+    </div>
+  </div>`);
+
+            return `<div class="tree-root"><div class="t-level">${rootNode}
+    <div class="branch-row">
+      ${sunnySubtree}
+      ${overcastLeaf}
+      ${rainSubtree}
+    </div>
+  </div></div>`;
+        }
+
+        // ─────────────────────────── STATES ──────────────────────────
+        const STATES = [
+            // 0
+            {
+                desc: "Ready — press Next to begin.",
+                focus: [], target: false,
+                calc: `<p style="color:var(--text-secondary)">Press <strong>Next Step ▶</strong> to start the ID3 walkthrough.</p>`
+            },
+            // 1
+            {
+                desc: "Goal: predict whether to Play Tennis from weather features.",
+                focus: [], target: true,
+                calc: `${metricRow([["Target", "Play Tennis"], ["Features", "4"], ["Algorithm", "ID3"]])}
+      <p style="color:var(--text-secondary);margin-top:10px;line-height:1.8">
+        We have 14 training instances described by 4 categorical features:
+        <strong>Outlook</strong>, <strong>Temperature</strong>, <strong>Humidity</strong>, <strong>Wind</strong>.
+        ID3 will recursively pick the feature that <em>reduces uncertainty the most</em>.
+      </p>` },
+            // 2
+            {
+                desc: "Counting class labels across the full dataset.",
+                focus: DATA.map(r => r.Day), target: true,
+                calc: `${metricRow([["Total", "14"], ["Yes", "9"], ["No", "5"], ["Ratio", "9:5"]])}
+      <p style="color:var(--text-secondary);margin-top:10px;line-height:1.8">
+        The dataset is <strong>not pure</strong> — we have both Yes and No examples. ID3 must find a split.
+        High-lighted rows show the <em>full root set</em>.
+      </p>` },
+            // 3
+            {
+                desc: "Computing root entropy H(S).",
+                focus: DATA.map(r => r.Day), target: true,
+                calc: `${metricRow([["Yes", "9"], ["No", "5"], ["Total", "14"]])}
+      ${entropyBlock(DATA, "Root entropy H(S)")}
+      <p style="color:var(--text-secondary);margin-top:8px;font-size:.88rem">
+        H = 0.940 bits — a high value close to 1, meaning the dataset is quite mixed.
+        Entropy of 0 would mean perfectly pure; 1.0 means a 50/50 split.
+      </p>` },
+            // 4
+            {
+                desc: "Splitting by Outlook — counting sub-branch members.",
+                focus: [], target: false,
+                calc: `<h6 style="font-weight:700">Outlook branch counts:</h6>
+      <table class="ig-table"><thead><tr><th>Outlook</th><th>Yes</th><th>No</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr><td>Sunny</td><td>2</td><td>3</td><td>5</td></tr>
+        <tr><td>Overcast</td><td>4</td><td>0</td><td>4</td></tr>
+        <tr><td>Rain</td><td>3</td><td>2</td><td>5</td></tr>
+      </tbody></table>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        Notice <strong>Overcast</strong> has zero No examples → it will be a pure leaf! Sunny and Rain are still mixed.
+      </p>` },
+            // 5
+            {
+                desc: "Computing entropy for each Outlook branch.",
+                focus: [], target: false,
+                calc: `${entropyBlock(SUNNY, "H(Sunny) — 2 yes, 3 no")}
+      ${entropyBlock(OVERCAST, "H(Overcast) — 4 yes, 0 no  ← PURE")}
+      ${entropyBlock(RAIN, "H(Rain) — 3 yes, 2 no")}
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        <strong>Overcast → entropy = 0</strong>. No further splitting needed there. Sunny and Rain both = 0.971.
+      </p>` },
+            // 6
+            {
+                desc: "Computing Information Gain for Outlook.",
+                focus: [], target: false,
+                calc: splitBlock(DATA, "outlook")
+            },
+            // 7
+            {
+                desc: "Comparing all four attributes — selecting the winner.",
+                focus: [], target: false,
+                calc: `${igTable(DATA, FEATURES, "outlook")}
+      <details style="margin-top:14px"><summary>Show full workings for every attribute</summary>
+        ${FEATURES.map(f => `<h6 style="margin-top:16px;font-weight:700">${f}</h6>${splitBlock(DATA, f)}`).join("")}
+      </details>
+      <div class="formula-box mt-3"><b>Winner: Outlook   IG = 0.246</b></div>` },
+            // 8
+            {
+                desc: "Outlook chosen as the root node. Tree starts growing.",
+                focus: [], target: false,
+                calc: `<div class="formula-box"><b>Root node: Outlook</b>
+IG(Outlook) = 0.246  ← highest among all 4 features</div>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        The tree shows Outlook at the root. Next, we'll create branches for its three values:
+        Sunny, Overcast, Rain.
+      </p>` },
+            // 9
+            {
+                desc: "Creating branches for Outlook values: Sunny, Overcast, Rain.",
+                focus: [], target: false,
+                calc: `<table class="ig-table"><thead><tr><th>Outlook</th><th>Yes</th><th>No</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Sunny</td><td>2</td><td>3</td><td>Mixed → continue splitting</td></tr>
+        <tr><td>Overcast</td><td>4</td><td>0</td><td><span class="badge-yes">Pure → Leaf: Yes</span></td></tr>
+        <tr><td>Rain</td><td>3</td><td>2</td><td>Mixed → continue splitting</td></tr>
+      </tbody></table>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        Overcast is immediately resolved. Sunny and Rain branches require recursion.
+      </p>` },
+            // 10
+            {
+                desc: "Overcast → pure leaf (Yes). All 4 overcast days play tennis.",
+                focus: OVERCAST.map(r => r.Day), target: true,
+                calc: `${metricRow([["Overcast rows", "4"], ["Yes", "4"], ["No", "0"], ["Entropy", "0.000"]])}
+      ${entropyBlock(OVERCAST, "H(Overcast) — perfectly pure!")}
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        Entropy = 0 → <strong>immediate leaf node</strong> labelled <span class="badge-yes">Yes</span>.
+        No further feature testing required on this branch.
+      </p>` },
+            // 11
+            {
+                desc: "Analyzing the Sunny branch (5 rows, 2 Yes, 3 No).",
+                focus: SUNNY.map(r => r.Day), target: true,
+                calc: `${metricRow([["Sunny rows", "5"], ["Yes", "2"], ["No", "3"], ["Entropy", "0.971"]])}
+      ${entropyBlock(SUNNY, "H(Sunny)")}
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        Entropy = 0.971 → highly mixed. ID3 must recurse on the Sunny subset using the
+        remaining features: Temperature, Humidity, Wind.
+      </p>` },
+            // 12
+            {
+                desc: "Choosing the best split for the Sunny branch.",
+                focus: SUNNY.map(r => r.Day), target: true,
+                calc: `${igTable(SUNNY, ["Temp", "Humidity", "Wind"], "Humidity")}
+      <details style="margin-top:14px"><summary>Show full workings for Sunny branch</summary>
+        ${["Temp", "Humidity", "Wind"].map(f => `<h6 style="margin-top:16px;font-weight:700">${f}</h6>${splitBlock(SUNNY, f)}`).join("")}
+      </details>
+      <div class="formula-box mt-3"><b>Sunny branch winner: Humidity   IG = 0.971</b></div>` },
+            // 13
+            {
+                desc: "Splitting Sunny by Humidity → both branches pure!",
+                focus: SUNNY.map(r => r.Day), target: true,
+                calc: `<div class="entropy-detail">
+      <strong>Sunny + High Humidity</strong> (D1, D2, D8) → <span class="badge-no">No (3/3)</span> — pure<br>
+      H = 0.000
+    </div>
+    <div class="entropy-detail">
+      <strong>Sunny + Normal Humidity</strong> (D9, D11) → <span class="badge-yes">Yes (2/2)</span> — pure<br>
+      H = 0.000
+    </div>
+    <p style="color:var(--text-secondary);font-size:.88rem;margin-top:10px">
+      Both sub-branches are <strong>pure</strong> → two leaf nodes created.
+      Sunny branch is now fully resolved!
+    </p>` },
+            // 14
+            {
+                desc: "Analyzing the Rain branch (5 rows, 3 Yes, 2 No).",
+                focus: RAIN.map(r => r.Day), target: true,
+                calc: `${metricRow([["Rain rows", "5"], ["Yes", "3"], ["No", "2"], ["Entropy", "0.971"]])}
+      ${entropyBlock(RAIN, "H(Rain)")}
+      <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+        Entropy = 0.971 → still mixed. ID3 recurses on Rain subset.
+        Remaining features: Temperature, Humidity, Wind.
+      </p>` },
+            // 15
+            {
+                desc: "Choosing the best split for the Rain branch.",
+                focus: RAIN.map(r => r.Day), target: true,
+                calc: `${igTable(RAIN, ["Temp", "Humidity", "Wind"], "Wind")}
+      <details style="margin-top:14px"><summary>Show full workings for Rain branch</summary>
+        ${["Temp", "Humidity", "Wind"].map(f => `<h6 style="margin-top:16px;font-weight:700">${f}</h6>${splitBlock(RAIN, f)}`).join("")}
+      </details>
+      <div class="formula-box mt-3"><b>Rain branch winner: Wind   IG = 0.971</b></div>` },
+            // 16
+            {
+                desc: "Splitting Rain by Wind → both branches pure!",
+                focus: RAIN.map(r => r.Day), target: true,
+                calc: `<div class="entropy-detail">
+      <strong>Rain + Weak Wind</strong> (D4, D5, D10) → <span class="badge-yes">Yes (3/3)</span> — pure<br>
+      H = 0.000
+    </div>
+    <div class="entropy-detail">
+      <strong>Rain + Strong Wind</strong> (D6, D14) → <span class="badge-no">No (2/2)</span> — pure<br>
+      H = 0.000
+    </div>
+    <p style="color:var(--text-secondary);font-size:.88rem;margin-top:10px">
+      Both sub-branches are <strong>pure</strong> → two leaf nodes created.
+      Rain branch fully resolved!
+    </p>` },
+            // 17
+            {
+                desc: "Decision tree is complete! All paths lead to pure leaves.",
+                focus: [], target: false,
+                calc: `${metricRow([["Root", "Outlook"], ["Depth", "2"], ["Leaves", "5"], ["Accuracy", "14/14"]])}
+    <div class="formula-box"><b>Final tree structure:</b>
+Outlook
+ ├── sunny    → Humidity
+ │    ├── high   → NO
+ │    └── normal → YES
+ ├── overcast         → YES
+ └── rain     → Wind
+      ├── weak   → YES
+      └── strong → NO</div>
+    <p style="color:var(--text-secondary);font-size:.88rem;margin-top:8px">
+      The tree perfectly classifies all 14 training examples.
+      Use the <strong>Prediction Demo</strong> below to test new instances.
+    </p>` },
+            // 18
+            {
+                desc: "Prediction demo — enter feature values below and click Predict.",
+                focus: [], target: false,
+                calc: `<p style="color:var(--text-secondary)">Scroll down to the <strong>Prediction Demo</strong> section. Enter any combination of feature values and click <strong>Predict Now</strong> to walk through the tree.</p>
+      <div class="formula-box"><b>Pre-loaded example:</b>
+Outlook  = rain
+Temp     = mild
+Humidity = high
+Wind     = strong
+
+Path: rain → Wind = strong → <b>NO</b></div>` }
+        ];
+
+        // ─────────────────────────── STATE MACHINE ───────────────────
+        let step = 0, timer = null, simStarted = false;
+
+        function render() {
+            const s = STATES[step];
+            // Status
+            document.getElementById("status").innerHTML = `<span class="step-badge">${step}</span>${s.desc}`;
+            // Dataset
+            renderDataset(s.focus, s.target);
+            // Calc
+            document.getElementById("calc").innerHTML = s.calc;
+            // Tree
+            document.getElementById("tree").innerHTML = buildTree(step);
+            // Buttons
+            document.getElementById("btn-prev").disabled = step === 0;
+            document.getElementById("btn-next").disabled = step === STATES.length - 1;
+            // Progress
+            const pct = step / (STATES.length - 1) * 100;
+            document.getElementById("prog").style.width = pct + "%";
+            // Counter
+            document.getElementById("step-counter").textContent = `Step ${step} / ${STATES.length - 1}`;
+        }
+
+        function renderDataset(focusIds, target) {
+            const t = document.getElementById("dataset");
+            t.innerHTML = `<thead><tr>
+    <th>Day</th><th>Outlook</th><th>Temp</th><th>Humidity</th><th>Wind</th>
+    <th class="${target ? 'th-target' : ''}">Play Tennis</th>
+  </tr></thead><tbody></tbody>`;
+            const tb = t.querySelector("tbody");
+            DATA.forEach(r => {
+                const tr = document.createElement("tr");
+                const isFocus = focusIds.includes(r.Day);
+                if (focusIds.length && isFocus) tr.classList.add("row-focus");
+                if (focusIds.length && !isFocus) tr.classList.add("row-dim");
+                tr.innerHTML = `<td>${r.Day}</td><td>${r.outlook}</td><td>${r.Temp}</td>
+      <td>${r.Humidity}</td><td>${r.Wind}</td>
+      <td class="${r.Play === 'yes' ? 'td-yes' : 'td-no'}">${r.Play}</td>`;
+                tb.appendChild(tr);
+            });
+        }
+
+        function nextStep() { if (step < STATES.length - 1) { step++; render(); } }
+        function prevStep() { if (step > 0) { step--; render(); } }
+        function reset() { stopAuto(); step = 0; render(); }
+
+        function toggleAuto() {
+            if (timer) { stopAuto(); return; }
+            const btn = document.getElementById("btn-auto");
+            btn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop';
+            timer = setInterval(() => {
+                if (step >= STATES.length - 1) { stopAuto(); return; }
+                nextStep();
+            }, Number(document.getElementById("speed").value));
+        }
+        function stopAuto() {
+            if (timer) { clearInterval(timer); timer = null; }
+            document.getElementById("btn-auto").innerHTML = '<i class="fas fa-play-circle"></i> Auto-play';
+        }
+
+        document.getElementById("speed").addEventListener("input", function () {
+            document.getElementById("speed-label").textContent = (this.value / 1000).toFixed(1) + "s";
+            if (timer) { stopAuto(); toggleAuto(); }
+        });
+
+        function startSim() {
+            simStarted = true;
+            document.getElementById("sim-section").style.display = "block";
+            document.querySelector("#sim-section").scrollIntoView({ behavior: "smooth" });
+            reset();
+        }
+
+        // ─────────────────────────── PREDICTION ──────────────────────
+        function predict() {
+            const x = {
+                outlook: document.getElementById("pOutlook").value,
+                Temp: document.getElementById("pTemp").value,
+                Humidity: document.getElementById("pHumidity").value,
+                Wind: document.getElementById("pWind").value
+            };
+            let path = [], result;
+
+            path.push({ lbl: "Outlook", val: x.outlook });
+            if (x.outlook === "overcast") {
+                result = "yes"; path.push({ lbl: "→ Leaf", "val": "YES ✓" });
+            } else if (x.outlook === "sunny") {
+                path.push({ lbl: "Humidity", val: x.Humidity });
+                result = x.Humidity === "high" ? "no" : "yes";
+                path.push({ lbl: "→ Leaf", val: result === "yes" ? "YES ✓" : "NO ✗" });
+            } else {
+                path.push({ lbl: "Wind", val: x.Wind });
+                result = x.Wind === "weak" ? "yes" : "no";
+                path.push({ lbl: "→ Leaf", val: result === "yes" ? "YES ✓" : "NO ✗" });
+            }
+
+            const pathHtml = path.map((p, i) => `${i ? '<span class="pred-arrow">→</span>' : ''}<span class="pred-step">${p.lbl}: <strong>${p.val}</strong></span>`).join("");
+            document.getElementById("pred-result").innerHTML = `
+    <div><strong>Decision Path:</strong></div>
+    <div class="pred-path mt-2">${pathHtml}</div>
+    <div class="mt-3" style="font-size:1.05rem">
+      <strong>Prediction:</strong>
+      <span class="${result === 'yes' ? 'badge-yes' : 'badge-no'}" style="font-size:1rem;padding:6px 16px;margin-left:8px">
+        ${result === "yes" ? "✓ Play Tennis (YES)" : "✗ Don't Play (NO)"}
+      </span>
+    </div>`;
+        }
+
+        // ─────────────────────────── THEORY TABS ─────────────────────
+        function showTheory(id) {
+            document.querySelectorAll(".theory-tab-pane").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".theory-tab-btn").forEach(b => b.classList.remove("active"));
+            document.getElementById("t-" + id).classList.add("active");
+            event.target.classList.add("active");
+            if (id === "quiz") initQuiz();
+        }
+
+        // ─────────────────────────── QUIZ ────────────────────────────
+        const QUIZ = [
+            {
+                q: "What does ID3 stand for?",
+                opts: ["Iterative Dichotomiser 3", "Intelligent Decision Data", "Integrated Data Discovery", "Induced Difference Division"],
+                ans: 0,
+                exp: "ID3 = Iterative Dichotomiser 3, created by Ross Quinlan in 1986."
+            },
+            {
+                q: "What value of entropy means a node is perfectly pure?",
+                opts: ["1.0", "0.5", "0.0", "-1.0"], ans: 2,
+                exp: "Entropy = 0 means all examples belong to the same class — perfect purity."
+            },
+            {
+                q: "Which attribute becomes the root in the Play Tennis tree?",
+                opts: ["Temperature", "Wind", "Humidity", "Outlook"], ans: 3,
+                exp: "Outlook has the highest Information Gain (0.246) among all features."
+            },
+            {
+                q: "How is Information Gain calculated?",
+                opts: ["IG = H(S) × H(S|A)", "IG = H(S) + H(S|A)", "IG = H(S) - H(S|A)", "IG = H(S|A) - H(S)"], ans: 2,
+                exp: "IG(S,A) = H(S) − H(S|A). We subtract the weighted entropy AFTER the split from the parent entropy."
+            },
+            {
+                q: "What happens when a subset has only one class in ID3?",
+                opts: ["Keep splitting", "Create an internal node", "Create a leaf node", "Backtrack"], ans: 2,
+                exp: "When a subset is pure (entropy=0), ID3 creates a leaf node with that class label — no further splitting needed."
+            },
+            {
+                q: "For the Sunny branch, which feature is chosen to split on?",
+                opts: ["Temperature", "Wind", "Outlook", "Humidity"], ans: 3,
+                exp: "Among the remaining features (Temp, Humidity, Wind), Humidity achieves the highest IG (0.971) for the Sunny subset."
+            },
+            {
+                q: "What is the maximum possible value of binary entropy?",
+                opts: ["2.0", "0.0", "1.0", "∞"], ans: 2,
+                exp: "Binary entropy reaches maximum = 1.0 bit when both classes are equally likely (p=0.5 each)."
+            },
+            {
+                q: "ID3 is a _______ algorithm.",
+                opts: ["Dynamic programming", "Greedy", "Exhaustive search", "Backtracking"], ans: 1,
+                exp: "ID3 is greedy — it picks the locally best split at each node without reconsidering past decisions."
+            },
+        ];
+
+        let quizInited = false, quizAnswered = [];
+        function initQuiz() {
+            if (quizInited) return;
+            quizInited = true; quizAnswered = new Array(QUIZ.length).fill(null);
+            const c = document.getElementById("quiz-container");
+            c.innerHTML = QUIZ.map((q, i) => `
+    <div class="mb-4">
+      <div style="font-weight:600;margin-bottom:10px"><span class="step-badge">${i + 1}</span>${q.q}</div>
+      <div id="q${i}-opts">
+        ${q.opts.map((o, j) => `<button class="quiz-option" onclick="answerQ(${i},${j})">${o}</button>`).join("")}
+      </div>
+      <div id="q${i}-exp" style="display:none;margin-top:8px;padding:10px;background:rgba(102,126,234,.08);border-radius:8px;font-size:.88rem;color:var(--text-secondary)">
+        <i class="fas fa-lightbulb me-2" style="color:#ffc107"></i>${q.exp}
+      </div>
+    </div>`).join("") +
+                `<div id="quiz-score" style="display:none;margin-top:10px;font-size:1.1rem;font-weight:700;text-align:center"></div>`;
+        }
+        function answerQ(qi, chosen) {
+            if (quizAnswered[qi] !== null) return;
+            quizAnswered[qi] = chosen;
+            const btns = document.querySelectorAll(`#q${qi}-opts .quiz-option`);
+            btns.forEach((b, j) => {
+                if (j === QUIZ[qi].ans) b.classList.add("correct");
+                else if (j === chosen) b.classList.add("wrong");
+                b.disabled = true;
+            });
+            document.getElementById(`q${qi}-exp`).style.display = "block";
+            // Score
+            if (quizAnswered.every(a => a !== null)) {
+                const score = quizAnswered.filter((a, i) => a === QUIZ[i].ans).length;
+                const el = document.getElementById("quiz-score");
+                el.style.display = "block";
+                el.innerHTML = `Score: ${score} / ${QUIZ.length} ${score >= 6 ? '🎉 Excellent!' : score >= 4 ? '👍 Good!' : '📚 Review the theory'}`;
+            }
+        }
+
+        // ─────────────────────────── UTILITIES ───────────────────────
+        function toggleTheme() {
+            const root = document.documentElement;
+            const isDark = root.getAttribute("data-theme") === "dark";
+            root.setAttribute("data-theme", isDark ? "light" : "dark");
+            document.getElementById("theme-icon").className = isDark ? "fas fa-moon" : "fas fa-sun";
+        }
+
+        function scrollTo(sel) {
+            const el = document.querySelector(sel);
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Particles
+        (function () {
+            const c = document.getElementById("particles");
+            for (let i = 0; i < 18; i++) {
+                const p = document.createElement("div");
+                p.className = "particle";
+                p.style.cssText = `left:${Math.random() * 100}%;top:${Math.random() * 100}%;
+      animation-delay:${Math.random() * 18}s;animation-duration:${12 + Math.random() * 10}s;
+      width:${6 + Math.random() * 10}px;height:${6 + Math.random() * 10}px;opacity:${.1 + Math.random() * .25}`;
+                c.appendChild(p);
+            }
+        })();
+
+        // Loading screen
+        window.addEventListener("load", () => {
+            setTimeout(() => document.getElementById("loading-screen").classList.add("hidden"), 900);
+        });
+
+        // Init render (for hero page)
+        render();
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
